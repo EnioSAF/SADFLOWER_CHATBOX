@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Twitch Chat — Diagnostic</title>
+  <style>
+    body {
+      margin: 0;
+      background: #1a1a1a;
+      color: #fff;
+      font-family: monospace;
+      padding: 20px;
+    }
+
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border-left: 4px solid;
+    }
+
+    .ok {
+      background: rgba(0, 255, 0, 0.1);
+      border-color: #0f0;
+    }
+
+    .error {
+      background: rgba(255, 0, 0, 0.1);
+      border-color: #f00;
+    }
+
+    .info {
+      background: rgba(0, 150, 255, 0.1);
+      border-color: #09f;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🔍 Diagnostic de l'Overlay Twitch</h1>
+  <div id="log"></div>
+
+  <script>
+    const log = document.getElementById('log');
+
+    function addLog(msg, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `status ${type}`;
+      div.textContent = msg;
+      log.appendChild(div);
+    }
+
+    // Test 1: Chargement de tmi.js
+    addLog('⏳ Tentative de chargement de tmi.js...', 'info');
+
+    const script = document.createElement('script');
+    script.src = './tmi.min.js';
+
+    script.onload = () => {
+      addLog('✅ tmi.min.js chargé avec succès !', 'ok');
+
+      // Test 2: Vérifier si window.tmi existe
+      setTimeout(() => {
+        if (window.tmi) {
+          addLog('✅ window.tmi est disponible', 'ok');
+          addLog('✅ Version TMI: ' + (window.tmi.Client ? 'Client trouvé' : 'Client introuvable'), window.tmi.Client ? 'ok' : 'error');
+
+          // Test 3: Essayer de se connecter
+          addLog('⏳ Tentative de connexion à Twitch...', 'info');
+          try {
+            const client = new window.tmi.Client({
+              connection: { secure: true, reconnect: true },
+              channels: ['#eniosadflower']
+            });
+
+            client.on('connected', (address, port) => {
+              addLog(`✅ CONNECTÉ à Twitch IRC (${address}:${port})`, 'ok');
+              addLog('🎉 Tout fonctionne ! Tu peux utiliser l\'overlay complet.', 'ok');
+            });
+
+            client.on('disconnected', (reason) => {
+              addLog(`⚠️ Déconnecté: ${reason}`, 'error');
+            });
+
+            client.connect().catch(err => {
+              addLog('❌ Erreur de connexion: ' + err.message, 'error');
+            });
+
+          } catch (err) {
+            addLog('❌ Erreur lors de la création du client: ' + err.message, 'error');
+          }
+
+        } else {
+          addLog('❌ window.tmi n\'existe pas après chargement', 'error');
+          addLog('💡 Le fichier tmi.min.js est peut-être corrompu', 'info');
+        }
+      }, 100);
+    };
+
+    script.onerror = (err) => {
+      addLog('❌ Échec du chargement de tmi.min.js', 'error');
+      addLog('💡 Vérifie que tmi.min.js est dans le même dossier', 'info');
+      addLog('💡 Télécharge-le ici: https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js', 'info');
+    };
+
+    document.head.appendChild(script);
+
+    // Info supplémentaires
+    addLog('📍 URL actuelle: ' + window.location.href, 'info');
+    addLog('🌐 Protocole: ' + window.location.protocol, 'info');
+  </script>
+
+</body>
+
+</html>
