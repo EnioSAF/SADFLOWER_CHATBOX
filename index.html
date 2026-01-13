@@ -4,113 +4,1021 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Twitch Chat — Diagnostic</title>
+  <title>Twitch Chat — Liquid Glass Edition</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+    rel="stylesheet">
+
   <style>
+    :root {
+      /* Layout */
+      --box-w: 440px;
+      --box-h: 1080px;
+      --pad: 16px;
+      --gap: 12px;
+
+      /* Timings */
+      --in-ms: 950ms;
+      --out-ms: 900ms;
+      --life-s: 45s;
+      --enter-delay: 200ms;
+
+      /* Liquid Glass Trails */
+      --trail-ms: 2600ms;
+      --trail-rise: 70px;
+      --trail-alpha: 0.96;
+      --trail-blur: 2.4px;
+
+      /* Enhanced Chroma */
+      --gain-r: 1.18;
+      --gain-g: 1.12;
+      --gain-b: 0.88;
+
+      /* Glass Background */
+      --glass-radius: 22px;
+      --glass-blur: 22px;
+      --glass-sat: 150%;
+
+      /* Message Cards */
+      --card-bg: linear-gradient(135deg, rgba(35, 38, 48, .75) 0%, rgba(28, 30, 38, .70) 100%);
+      --card-border: rgba(255, 255, 255, .10);
+      --card-radius: 16px;
+      --card-shadow: 0 4px 16px rgba(0, 0, 0, .25), 0 2px 4px rgba(0, 0, 0, .15);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
     body {
+      height: 100%;
       margin: 0;
-      background: #1a1a1a;
+    }
+
+    body {
+      background: transparent;
       color: #fff;
-      font-family: monospace;
-      padding: 20px;
+      font-family: 'Space Grotesk', 'JetBrains Mono', system-ui, sans-serif;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
     }
 
-    .status {
-      padding: 10px;
-      margin: 10px 0;
+    .box {
+      width: var(--box-w);
+      height: var(--box-h);
+      position: relative;
+      overflow: hidden;
+      contain: layout paint;
+      border-radius: var(--glass-radius);
+    }
+
+    /* ===== Background moitié basse ===== */
+    .bg-half {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      clip-path: inset(50% 0 0 0);
+      border-bottom-left-radius: var(--glass-radius);
+      border-bottom-right-radius: var(--glass-radius);
+      overflow: hidden;
+    }
+
+    .bg-drop {
+      position: absolute;
+      inset: 0;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, .45), 0 6px 12px rgba(0, 0, 0, .25);
+      border-bottom-left-radius: inherit;
+      border-bottom-right-radius: inherit;
+    }
+
+    .bg-outline {
+      position: absolute;
+      inset: 0;
+      border: 1px solid rgba(255, 255, 255, .10);
+      border-top: none;
+      border-bottom-left-radius: inherit;
+      border-bottom-right-radius: inherit;
+    }
+
+    .frost {
+      position: absolute;
+      inset: 0;
+      border-bottom-left-radius: inherit;
+      border-bottom-right-radius: inherit;
+    }
+
+    .frost-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to top,
+          rgba(18, 20, 26, .98) 0%,
+          rgba(18, 20, 26, .94) 8%,
+          rgba(18, 20, 26, .85) 16%,
+          rgba(18, 20, 26, .65) 26%,
+          rgba(18, 20, 26, .45) 36%,
+          rgba(18, 20, 26, .30) 44%,
+          rgba(18, 20, 26, .18) 48%,
+          rgba(18, 20, 26, .08) 52%,
+          transparent 58%);
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+      box-shadow:
+        inset 0 -1px 0 rgba(255, 255, 255, .12),
+        inset 0 1px 0 rgba(255, 255, 255, .05);
+    }
+
+    .frost-noise {
+      position: absolute;
+      inset: 0;
+      opacity: .08;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='3' seed='15'/><feColorMatrix type='saturate' values='0'/></filter><rect width='150' height='150' filter='url(%23n)' opacity='.94'/></svg>");
+      background-size: 260px 260px;
+      mix-blend-mode: soft-light;
+    }
+
+    .frost-vign {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(120% 170% at 50% 90%, transparent 40%, rgba(0, 0, 0, .28) 100%),
+        linear-gradient(to top, rgba(255, 255, 255, .07), transparent 30%);
+    }
+
+    /* ===== Layers ===== */
+    .trail-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .stack {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: var(--gap);
+      padding: var(--pad);
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ===== Message Cards ===== */
+    .msg {
+      position: relative;
+      pointer-events: auto;
+      will-change: transform, filter, opacity;
+      opacity: 0;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      padding: 12px 14px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: var(--card-shadow);
+      transition: border-color 0.3s ease;
+    }
+
+    .msg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(255, 255, 255, .08) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .msg:hover {
+      border-color: rgba(255, 255, 255, .18);
+    }
+
+    .row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .content {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .name {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-weight: 700;
+      font-size: 17px;
+      line-height: 1.2;
+      margin-bottom: 5px;
+      color: #fff;
+      letter-spacing: .2px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+    }
+
+    /* ===== Role Badges ===== */
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      font-size: 11px;
+      font-weight: 800;
       border-radius: 5px;
-      border-left: 4px solid;
+      flex-shrink: 0;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .4);
+      transition: transform 0.2s ease;
     }
 
-    .ok {
-      background: rgba(0, 255, 0, 0.1);
-      border-color: #0f0;
+    .role-badge:hover {
+      transform: scale(1.1);
     }
 
-    .error {
-      background: rgba(255, 0, 0, 0.1);
-      border-color: #f00;
+    .role-broadcaster {
+      background: linear-gradient(135deg, #ff2a55 0%, #d11a3d 100%);
+      border: 1px solid rgba(255, 255, 255, .25);
+      box-shadow: 0 0 12px rgba(255, 42, 85, .6), inset 0 1px 0 rgba(255, 255, 255, .2);
     }
 
-    .info {
-      background: rgba(0, 150, 255, 0.1);
-      border-color: #09f;
+    .role-mod {
+      background: linear-gradient(135deg, #00ff88 0%, #00c769 100%);
+      border: 1px solid rgba(255, 255, 255, .25);
+      box-shadow: 0 0 12px rgba(0, 255, 136, .6), inset 0 1px 0 rgba(255, 255, 255, .2);
+    }
+
+    .role-vip {
+      background: linear-gradient(135deg, #ff3de8 0%, #c900b8 100%);
+      border: 1px solid rgba(255, 255, 255, .25);
+      box-shadow: 0 0 12px rgba(255, 61, 232, .6), inset 0 1px 0 rgba(255, 255, 255, .2);
+    }
+
+    .role-partner {
+      background: linear-gradient(135deg, #b580ff 0%, #8500ff 100%);
+      border: 1px solid rgba(255, 255, 255, .25);
+      box-shadow: 0 0 12px rgba(181, 128, 255, .6), inset 0 1px 0 rgba(255, 255, 255, .2);
+    }
+
+    /* ===== Sub Badges ===== */
+    .sub-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, .18);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+      transition: transform 0.2s ease;
+    }
+
+    .sub-badge:hover {
+      transform: scale(1.05);
+    }
+
+    .sub-tier1 {
+      background: linear-gradient(135deg, #7575ff 0%, #5252dd 100%);
+      box-shadow: 0 0 10px rgba(117, 117, 255, .5), inset 0 1px 0 rgba(255, 255, 255, .15);
+    }
+
+    .sub-tier2 {
+      background: linear-gradient(135deg, #ff88dd 0%, #ff1aa0 100%);
+      box-shadow: 0 0 10px rgba(255, 136, 221, .5), inset 0 1px 0 rgba(255, 255, 255, .15);
+    }
+
+    .sub-tier3 {
+      background: linear-gradient(135deg, #ffe445 0%, #ffc700 100%);
+      box-shadow: 0 0 12px rgba(255, 228, 69, .6), inset 0 1px 0 rgba(255, 255, 255, .2);
+      color: #1a1a1a;
+      text-shadow: 0 1px 2px rgba(255, 255, 255, .3);
+    }
+
+    /* ===== Info Badges ===== */
+    .badges {
+      display: inline-flex;
+      gap: 5px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .12);
+      border: 1px solid rgba(255, 255, 255, .16);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+      transition: transform 0.2s ease;
+    }
+
+    .badge:hover {
+      transform: scale(1.05);
+    }
+
+    .badge-first {
+      background: linear-gradient(135deg, #00e5ff 0%, #0099dd 100%);
+      border-color: rgba(255, 255, 255, .22);
+      box-shadow: 0 0 10px rgba(0, 229, 255, .5), inset 0 1px 0 rgba(255, 255, 255, .15);
+    }
+
+    .badge-bits {
+      background: linear-gradient(135deg, #a855ff 0%, #8500dd 100%);
+      border-color: rgba(255, 255, 255, .22);
+      box-shadow: 0 0 10px rgba(168, 85, 255, .5), inset 0 1px 0 rgba(255, 255, 255, .15);
+    }
+
+    .text {
+      font-size: 29px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-wrap: anywhere;
+      letter-spacing: .12px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, .32);
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+    }
+
+    .text img.emote {
+      height: 1.4em;
+      vertical-align: -0.28em;
+      display: inline-block;
+      transition: transform 0.2s ease;
+    }
+
+    .text img.emote:hover {
+      transform: scale(1.15);
+    }
+
+    /* ===== Message Types ===== */
+    .msg[data-type="announcement"] {
+      background: linear-gradient(135deg, rgba(80, 200, 255, .28) 0%, rgba(80, 200, 255, .12) 100%);
+      border-color: rgba(80, 200, 255, .40);
+      box-shadow: 0 0 20px rgba(80, 200, 255, .30), 0 4px 16px rgba(0, 0, 0, .25);
+    }
+
+    .msg[data-type="highlighted"] {
+      background: linear-gradient(135deg, rgba(255, 220, 120, .28) 0%, rgba(255, 220, 120, .12) 100%);
+      border-color: rgba(255, 215, 120, .40);
+      box-shadow: 0 0 20px rgba(255, 215, 120, .30), 0 4px 16px rgba(0, 0, 0, .25);
+    }
+
+    .msg[data-type="raid"] {
+      background: linear-gradient(135deg, rgba(255, 120, 180, .28) 0%, rgba(255, 120, 180, .12) 100%);
+      border-color: rgba(255, 120, 180, .40);
+      box-shadow: 0 0 20px rgba(255, 120, 180, .30), 0 4px 16px rgba(0, 0, 0, .25);
+    }
+
+    .msg[data-type="giftsub"] {
+      background: linear-gradient(135deg, rgba(168, 85, 255, .28) 0%, rgba(168, 85, 255, .12) 100%);
+      border-color: rgba(168, 85, 255, .40);
+      box-shadow: 0 0 20px rgba(168, 85, 255, .30), 0 4px 16px rgba(0, 0, 0, .25);
+    }
+
+    .msg[data-type="cheer"] {
+      background: linear-gradient(135deg, rgba(158, 66, 245, .28) 0%, rgba(158, 66, 245, .12) 100%);
+      border-color: rgba(158, 66, 245, .40);
+      box-shadow: 0 0 20px rgba(158, 66, 245, .30), 0 4px 16px rgba(0, 0, 0, .25);
+    }
+
+    /* ===== Liquid Glass Entry Animation ===== */
+    .msg.is-enter {
+      animation: liquid-in var(--in-ms) cubic-bezier(.10, .88, .12, 1) both;
+    }
+
+    @keyframes liquid-in {
+      0% {
+        transform: translateY(40px) scale(0.95);
+        filter: blur(1.5px) saturate(1.20) brightness(1.12);
+        opacity: 0;
+      }
+
+      16% {
+        transform: translateY(22px) scale(0.975);
+        opacity: .45;
+      }
+
+      40% {
+        transform: translateY(10px) scale(0.99);
+        filter: blur(0.5px) saturate(1.08) brightness(1.06);
+        opacity: .82;
+      }
+
+      68% {
+        transform: translateY(3px) scale(1.008);
+        filter: blur(0.15px) saturate(1.02);
+        opacity: .95;
+      }
+
+      100% {
+        transform: none;
+        filter: none;
+        opacity: 1;
+      }
+    }
+
+    /* ===== Liquid Glass Exit Animation (reverse flow) ===== */
+    .msg.is-exit {
+      animation: liquid-out var(--out-ms) cubic-bezier(.28, .02, .32, 1) forwards;
+    }
+
+    @keyframes liquid-out {
+      0% {
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+        opacity: 1;
+      }
+
+      18% {
+        transform: translateY(-10px) scale(1.012);
+        filter: blur(0.25px) saturate(1.06);
+        opacity: .94;
+      }
+
+      42% {
+        transform: translateY(-38%) scale(0.99);
+        filter: blur(0.75px) saturate(1.10);
+        opacity: .72;
+      }
+
+      68% {
+        transform: translateY(-72%) scale(0.965);
+        filter: blur(1.2px) saturate(1.15) brightness(0.94);
+        opacity: .32;
+      }
+
+      100% {
+        transform: translateY(-112%) scale(0.93);
+        filter: blur(2px) saturate(1.18) brightness(0.82);
+        opacity: 0;
+      }
+    }
+
+    /* ===== Enhanced Chromatic Ghost Trail ===== */
+    .ghost {
+      position: absolute;
+      left: var(--pad);
+      width: calc(100% - var(--pad) * 2);
+      pointer-events: none;
+      opacity: var(--trail-alpha);
+      animation: ghost-flow var(--trail-ms) cubic-bezier(.14, .90, .10, 1) both;
+      -webkit-mask-image: linear-gradient(to top,
+          rgba(0, 0, 0, 0) 0,
+          rgba(0, 0, 0, .70) 16%,
+          rgba(0, 0, 0, .92) 32%,
+          rgba(0, 0, 0, 1) 52%,
+          rgba(0, 0, 0, .88) 76%,
+          rgba(0, 0, 0, 0) 100%);
+      mask-image: linear-gradient(to top,
+          rgba(0, 0, 0, 0) 0,
+          rgba(0, 0, 0, .70) 16%,
+          rgba(0, 0, 0, .92) 32%,
+          rgba(0, 0, 0, 1) 52%,
+          rgba(0, 0, 0, .88) 76%,
+          rgba(0, 0, 0, 0) 100%);
+    }
+
+    @keyframes ghost-flow {
+      0% {
+        transform: translateY(var(--trail-rise)) scale(1.025);
+        opacity: .92;
+      }
+
+      22% {
+        transform: translateY(calc(var(--trail-rise) * .62)) scale(1.015);
+        opacity: 1;
+      }
+
+      48% {
+        transform: translateY(calc(var(--trail-rise) * .28)) scale(1.008);
+        opacity: .99;
+      }
+
+      72% {
+        transform: translateY(calc(var(--trail-rise) * .10)) scale(1.002);
+        opacity: .78;
+      }
+
+      100% {
+        transform: translateY(0) scale(0.985);
+        opacity: 0;
+      }
+    }
+
+    .ghost>.chan {
+      position: absolute;
+      inset: 0;
+      mix-blend-mode: screen;
+    }
+
+    .ghost .chan.r {
+      transform: translate(var(--rx), var(--ry));
+      opacity: var(--ro);
+      filter: url(#tint-r) blur(var(--trail-blur));
+    }
+
+    .ghost .chan.g {
+      transform: translate(var(--gx), var(--gy));
+      opacity: var(--go);
+      filter: url(#tint-g) blur(var(--trail-blur));
+    }
+
+    .ghost .chan.b {
+      transform: translate(var(--bx), var(--by));
+      opacity: var(--bo);
+      filter: url(#tint-b) blur(var(--trail-blur));
     }
   </style>
 </head>
 
 <body>
 
-  <h1>🔍 Diagnostic de l'Overlay Twitch</h1>
-  <div id="log"></div>
+  <svg width="0" height="0" style="position:absolute">
+    <filter id="tint-r">
+      <feColorMatrix type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+    </filter>
+    <filter id="tint-g">
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+    </filter>
+    <filter id="tint-b">
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+    </filter>
+  </svg>
+
+  <div class="box" role="region" aria-label="Chat Twitch">
+    <div class="bg-half" aria-hidden="true">
+      <div class="bg-drop"></div>
+      <div class="bg-outline"></div>
+      <div class="frost">
+        <div class="frost-bg"></div>
+        <div class="frost-noise"></div>
+        <div class="frost-vign"></div>
+      </div>
+    </div>
+
+    <div class="trail-layer" id="trails"></div>
+    <div class="stack" id="stack" aria-live="polite" aria-relevant="additions"></div>
+  </div>
+
+  <!-- ✅ tmi.js LOCAL -->
+  <script src="./tmi.min.js"></script>
 
   <script>
-    const log = document.getElementById('log');
+    (function () {
+      'use strict';
 
-    function addLog(msg, type = 'info') {
-      const div = document.createElement('div');
-      div.className = `status ${type}`;
-      div.textContent = msg;
-      log.appendChild(div);
-    }
+      if (!window.tmi) {
+        console.error('[overlay] ❌ tmi.js non chargé');
+        document.getElementById('stack').innerHTML =
+          '<div style="color:#ff5555;padding:20px;text-align:center;">❌ tmi.js non chargé</div>';
+        return;
+      }
 
-    // Test 1: Chargement de tmi.js
-    addLog('⏳ Tentative de chargement de tmi.js...', 'info');
+      /* ==================== CONFIG ==================== */
+      const CONFIG = {
+        channel: 'EnioSadFlower', // Change avec ton nom de chaîne Twitch
+        maxMessages: 12,
+        lifeSec: 45,
+        ignoreUsers: ['streamelements', 'nightbot', 'streamlabs'],
+        showTestMessages: false, // true pour voir des messages de test
+        debug: true
+      };
 
-    const script = document.createElement('script');
-    script.src = './tmi.min.js';
+      /* ==================== DOM + Utils ==================== */
+      const $stack = document.getElementById('stack');
+      const $trails = document.getElementById('trails');
 
-    script.onload = () => {
-      addLog('✅ tmi.min.js chargé avec succès !', 'ok');
+      const esc = s => {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      };
 
-      // Test 2: Vérifier si window.tmi existe
-      setTimeout(() => {
-        if (window.tmi) {
-          addLog('✅ window.tmi est disponible', 'ok');
-          addLog('✅ Version TMI: ' + (window.tmi.Client ? 'Client trouvé' : 'Client introuvable'), window.tmi.Client ? 'ok' : 'error');
+      function relTopWithin(el, container) {
+        const a = el.getBoundingClientRect();
+        const b = container.getBoundingClientRect();
+        return a.top - b.top;
+      }
 
-          // Test 3: Essayer de se connecter
-          addLog('⏳ Tentative de connexion à Twitch...', 'info');
-          try {
-            const client = new window.tmi.Client({
-              connection: { secure: true, reconnect: true },
-              channels: ['#eniosadflower']
-            });
+      const rand = (min, max) => min + Math.random() * (max - min);
 
-            client.on('connected', (address, port) => {
-              addLog(`✅ CONNECTÉ à Twitch IRC (${address}:${port})`, 'ok');
-              addLog('🎉 Tout fonctionne ! Tu peux utiliser l\'overlay complet.', 'ok');
-            });
+      function parseCssMs(v) {
+        const s = String(v || '').trim();
+        if (!s) return 0;
+        if (s.endsWith('ms')) return parseFloat(s);
+        if (s.endsWith('s')) return parseFloat(s) * 1000;
+        const n = parseFloat(s);
+        return Number.isFinite(n) ? n : 0;
+      }
 
-            client.on('disconnected', (reason) => {
-              addLog(`⚠️ Déconnecté: ${reason}`, 'error');
-            });
-
-            client.connect().catch(err => {
-              addLog('❌ Erreur de connexion: ' + err.message, 'error');
-            });
-
-          } catch (err) {
-            addLog('❌ Erreur lors de la création du client: ' + err.message, 'error');
+      /* ==================== Emotes Twitch ==================== */
+      function renderTwitchEmotes(text, emotes) {
+        const src = (text ?? '').toString();
+        if (!emotes) return esc(src);
+        const indices = [];
+        for (const [id, ranges] of Object.entries(emotes)) {
+          for (const r of ranges) {
+            const [a, b] = r.split('-').map(n => parseInt(n, 10));
+            if (Number.isFinite(a) && Number.isFinite(b)) indices.push({ a, b, id });
           }
-
-        } else {
-          addLog('❌ window.tmi n\'existe pas après chargement', 'error');
-          addLog('💡 Le fichier tmi.min.js est peut-être corrompu', 'info');
         }
-      }, 100);
-    };
+        indices.sort((x, y) => x.a - y.a);
+        const parts = [];
+        let last = 0;
+        for (const { a, b, id } of indices) {
+          if (a > last) parts.push(esc(src.slice(last, a)));
+          const code = esc(src.slice(a, b + 1));
+          parts.push(`<img class="emote" alt="${code}" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0">`);
+          last = b + 1;
+        }
+        if (last < src.length) parts.push(esc(src.slice(last)));
+        return parts.join('');
+      }
 
-    script.onerror = (err) => {
-      addLog('❌ Échec du chargement de tmi.min.js', 'error');
-      addLog('💡 Vérifie que tmi.min.js est dans le même dossier', 'info');
-      addLog('💡 Télécharge-le ici: https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js', 'info');
-    };
+      /* ==================== Enhanced Chromatic Trails ==================== */
+      function spawnGhost(fromMsgEl) {
+        const row = fromMsgEl.querySelector('.row');
+        if (!row) return;
 
-    document.head.appendChild(script);
+        const ghost = document.createElement('div');
+        ghost.className = 'ghost';
 
-    // Info supplémentaires
-    addLog('📍 URL actuelle: ' + window.location.href, 'info');
-    addLog('🌐 Protocole: ' + window.location.protocol, 'info');
+        // Offsets chromatiques prononcés
+        const rx = (rand(1.4, 2.8)).toFixed(2) + 'px';
+        const ry = (-rand(0.5, 1.4)).toFixed(2) + 'px';
+        const gx = (-rand(1.4, 2.8)).toFixed(2) + 'px';
+        const gy = (rand(0.5, 1.4)).toFixed(2) + 'px';
+        const bx = (rand(-1, 1)).toFixed(2) + 'px';
+        const by = (rand(-0.5, 0.5)).toFixed(2) + 'px';
+
+        ghost.style.setProperty('--rx', rx);
+        ghost.style.setProperty('--ry', ry);
+        ghost.style.setProperty('--gx', gx);
+        ghost.style.setProperty('--gy', gy);
+        ghost.style.setProperty('--bx', bx);
+        ghost.style.setProperty('--by', by);
+
+        // Gains canaux
+        const css = getComputedStyle(document.documentElement);
+        const ro = (rand(.88, 1.15) * parseFloat(css.getPropertyValue('--gain-r') || 1)).toFixed(2);
+        const go = (rand(.88, 1.15) * parseFloat(css.getPropertyValue('--gain-g') || 1)).toFixed(2);
+        const bo = (rand(.72, .95) * parseFloat(css.getPropertyValue('--gain-b') || 0.88)).toFixed(2);
+        ghost.style.setProperty('--ro', ro);
+        ghost.style.setProperty('--go', go);
+        ghost.style.setProperty('--bo', bo);
+
+        ghost.style.top = `${relTopWithin(fromMsgEl, $stack)}px`;
+        ghost.style.height = `${fromMsgEl.offsetHeight}px`;
+
+        const core = row.cloneNode(true);
+        for (const cls of ['r', 'g', 'b']) {
+          const c = document.createElement('div');
+          c.className = `chan ${cls}`;
+          c.appendChild(core.cloneNode(true));
+          ghost.appendChild(c);
+        }
+
+        $trails.appendChild(ghost);
+        ghost.addEventListener('animationend', () => ghost.remove(), { once: true });
+      }
+
+      /* ==================== Parse User Roles ==================== */
+      function parseUserRoles(tags) {
+        const roles = {
+          broadcaster: false,
+          mod: false,
+          vip: false,
+          partner: false,
+          subscriber: false,
+          subTier: null,
+          subMonths: 0,
+          firstMsg: false,
+          bits: 0
+        };
+
+        if (tags.badges?.broadcaster) roles.broadcaster = true;
+        if (tags.badges?.moderator || tags.mod) roles.mod = true;
+        if (tags.badges?.vip) roles.vip = true;
+        if (tags.badges?.partner) roles.partner = true;
+
+        if (tags.badges?.subscriber || tags.subscriber) {
+          roles.subscriber = true;
+          const subBadge = tags.badges?.subscriber;
+          if (subBadge) {
+            const tier = parseInt(subBadge.split('/')[0]) || 0;
+            if (tier >= 3000) roles.subTier = 3;
+            else if (tier >= 2000) roles.subTier = 2;
+            else roles.subTier = 1;
+          }
+          roles.subMonths = parseInt(tags['badge-info']?.subscriber) || 0;
+        }
+
+        if (tags['first-msg'] === '1') roles.firstMsg = true;
+        if (tags.bits) roles.bits = parseInt(tags.bits) || 0;
+
+        return roles;
+      }
+
+      /* ==================== Build Badges HTML ==================== */
+      function buildBadgesHTML(roles) {
+        const parts = [];
+
+        if (roles.broadcaster) {
+          parts.push('<span class="role-badge role-broadcaster" title="Broadcaster">🎙</span>');
+        }
+        if (roles.mod) {
+          parts.push('<span class="role-badge role-mod" title="Modérateur">🛡</span>');
+        }
+        if (roles.vip) {
+          parts.push('<span class="role-badge role-vip" title="VIP">💎</span>');
+        }
+        if (roles.partner) {
+          parts.push('<span class="role-badge role-partner" title="Partner">✓</span>');
+        }
+
+        if (roles.subscriber) {
+          let tierText = 'SUB';
+          let tierClass = 'sub-tier1';
+          if (roles.subTier === 3) {
+            tierText = 'T3';
+            tierClass = 'sub-tier3';
+          } else if (roles.subTier === 2) {
+            tierText = 'T2';
+            tierClass = 'sub-tier2';
+          } else {
+            tierText = 'T1';
+          }
+          if (roles.subMonths > 0) {
+            parts.push(`<span class="sub-badge ${tierClass}" title="Abonné ${roles.subMonths} mois">${tierText} ${roles.subMonths}</span>`);
+          } else {
+            parts.push(`<span class="sub-badge ${tierClass}" title="Abonné">${tierText}</span>`);
+          }
+        }
+
+        return parts.join('');
+      }
+
+      function buildInfoBadges(roles) {
+        const parts = [];
+
+        if (roles.firstMsg) {
+          parts.push('<span class="badge badge-first">FIRST</span>');
+        }
+
+        if (roles.bits > 0) {
+          parts.push(`<span class="badge badge-bits">${roles.bits} bits</span>`);
+        }
+
+        return parts.length ? `<span class="badges">${parts.join('')}</span>` : '';
+      }
+
+      /* ==================== Message build / exit ==================== */
+      function buildMessage({ userDisplay, userLogin, color, html, type = null, roles = {} }) {
+        if (!html || !String(html).trim()) return null;
+
+        const root = document.createElement('div');
+        root.className = 'msg';
+        if (type) root.dataset.type = type;
+
+        const row = document.createElement('div');
+        row.className = 'row';
+
+        const content = document.createElement('div');
+        content.className = 'content';
+
+        const name = document.createElement('div');
+        name.className = 'name';
+        name.style.color = color || '#fff';
+
+        const roleBadges = buildBadgesHTML(roles);
+        const infoBadges = buildInfoBadges(roles);
+
+        name.innerHTML = `${roleBadges}<span>${esc(userDisplay || userLogin)}</span>${infoBadges}`;
+
+        const text = document.createElement('div');
+        text.className = 'text';
+        text.innerHTML = html;
+
+        content.appendChild(name);
+        content.appendChild(text);
+        row.appendChild(content);
+        root.appendChild(row);
+
+        root.addEventListener('animationend', (e) => {
+          if (e.animationName === 'liquid-in') root.style.opacity = '';
+        });
+        return root;
+      }
+
+      function scheduleExit(node) {
+        if (!node || node.classList.contains('is-exit')) return;
+        node.classList.add('is-exit');
+        node.addEventListener('animationend', () => node.remove(), { once: true });
+      }
+
+      /* ==================== Add message ==================== */
+      function addMessage(opts) {
+        const el = buildMessage(opts);
+        if (!el) return;
+        $stack.prepend(el);
+
+        spawnGhost(el);
+
+        const css = getComputedStyle(document.documentElement);
+        const delayMs = parseCssMs(css.getPropertyValue('--enter-delay'));
+        setTimeout(() => {
+          el.classList.add('is-enter');
+        }, Math.max(0, delayMs));
+
+        setTimeout(() => scheduleExit(el), Math.max(3, CONFIG.lifeSec) * 1000);
+
+        [...$stack.children].slice(CONFIG.maxMessages).forEach(n => scheduleExit(n));
+      }
+
+      /* ==================== Boot ==================== */
+      if (CONFIG.showTestMessages) {
+        console.log('[overlay] 🧪 Messages de test activés');
+
+        setTimeout(() => {
+          addMessage({
+            userDisplay: 'StreamerPro',
+            userLogin: 'streamerpro',
+            color: '#ff2a55',
+            html: esc('Bienvenue sur le stream ! 🎮✨'),
+            type: null,
+            roles: { broadcaster: true, subscriber: true, subTier: 3, subMonths: 36 }
+          });
+        }, 600);
+
+        setTimeout(() => {
+          addMessage({
+            userDisplay: 'ModSquad',
+            userLogin: 'modsquad',
+            color: '#00ff88',
+            html: esc('Soyez sympas dans le chat ! 🛡️'),
+            type: null,
+            roles: { mod: true, subscriber: true, subTier: 2, subMonths: 18 }
+          });
+        }, 2000);
+
+        setTimeout(() => {
+          addMessage({
+            userDisplay: 'VIPGamer',
+            userLogin: 'vipgamer',
+            color: '#ff3de8',
+            html: esc('Incroyable cette partie ! 💎🔥'),
+            type: null,
+            roles: { vip: true, subscriber: true, subTier: 1, subMonths: 8 }
+          });
+        }, 3400);
+
+        setTimeout(() => {
+          addMessage({
+            userDisplay: 'NewbieGamer',
+            userLogin: 'newbiegamer',
+            color: '#00e5ff',
+            html: esc('Premier message ici ! Salut à tous ! 👋'),
+            type: null,
+            roles: { firstMsg: true }
+          });
+        }, 4800);
+
+        setTimeout(() => {
+          addMessage({
+            userDisplay: 'GenerousDonor',
+            userLogin: 'generousdonor',
+            color: '#ffe445',
+            html: esc('🎁 a offert 10 abonnements à la communauté !'),
+            type: 'giftsub',
+            roles: { subscriber: true, subTier: 3, subMonths: 48 }
+          });
+        }, 6200);
+      }
+
+      const client = new window.tmi.Client({
+        connection: {
+          secure: true,
+          reconnect: true,
+          timeout: 12000
+        },
+        channels: ['#' + CONFIG.channel.toLowerCase()]
+      });
+
+      client.on('connected', (address, port) => {
+        console.log(`[overlay] ✅ Connecté à Twitch IRC (${address}:${port})`);
+        console.log(`[overlay] 📺 Canal: ${CONFIG.channel}`);
+      });
+
+      client.on('disconnected', (reason) => {
+        console.warn('[overlay] ⚠️ Déconnecté:', reason);
+      });
+
+      client.on('reconnect', () => {
+        console.log('[overlay] 🔄 Reconnexion...');
+      });
+
+      client.on('message', (channel, tags, message, self) => {
+        if (self) return;
+        const userLogin = (tags['username'] || '').toString().toLowerCase();
+        const userDisplay = (tags['display-name'] || userLogin).toString();
+        if (CONFIG.ignoreUsers.includes(userLogin)) return;
+
+        const roles = parseUserRoles(tags);
+        const msgId = (tags['msg-id'] || '').toString();
+        const isAction = (tags['message-type'] === 'action');
+        const raw = isAction ? message.replace(/^\u0001ACTION\s|\u0001$/g, '') : message;
+
+        let html = renderTwitchEmotes(raw, tags.emotes);
+
+        let type = null;
+        if (msgId === 'raid') type = 'raid';
+        else if (msgId === 'highlighted-message') type = 'highlighted';
+        else if (roles.bits > 0) type = 'cheer';
+
+        addMessage({ userDisplay, userLogin, color: tags.color || '#fff', html, type, roles });
+      });
+
+      client.on('usernotice', (channel, tags) => {
+        const userLogin = (tags['username'] || '').toString().toLowerCase();
+        const userDisplay = (tags['display-name'] || userLogin).toString();
+        if (CONFIG.ignoreUsers.includes(userLogin)) return;
+
+        const roles = parseUserRoles(tags);
+        const msgId = (tags['msg-id'] || '').toString();
+
+        let html = '';
+        let type = null;
+
+        switch (msgId) {
+          case 'raid': {
+            type = 'raid';
+            const viewers = tags['msg-param-viewerCount'] || '?';
+            html = esc(`🎉 ${userDisplay} a raided avec ${viewers} viewers !`);
+            break;
+          }
+          case 'sub':
+          case 'resub': {
+            type = 'highlighted';
+            const months = tags['msg-param-cumulative-months'] || tags['msg-param-months'] || '1';
+            const tier = tags['msg-param-sub-plan'];
+            let tierText = '';
+            if (tier === '3000') tierText = ' (Tier 3)';
+            else if (tier === '2000') tierText = ' (Tier 2)';
+            else if (tier === '1000') tierText = ' (Tier 1)';
+            html = esc(`⭐ ${userDisplay} s'abonne${tierText} — ${months} mois`);
+            break;
+          }
+          case 'subgift': {
+            type = 'giftsub';
+            const toUser = tags['msg-param-recipient-display-name'] || 'quelqu\'un';
+            const tier = tags['msg-param-sub-plan'];
+            let tierText = '';
+            if (tier === '3000') tierText = ' Tier 3';
+            else if (tier === '2000') tierText = ' Tier 2';
+            else if (tier === '1000') tierText = ' Tier 1';
+            html = esc(`🎁 ${userDisplay} offre un abonnement${tierText} à ${toUser}`);
+            break;
+          }
+          case 'submysterygift': {
+            type = 'giftsub';
+            const count = tags['msg-param-mass-gift-count'] || tags['msg-param-sender-count'] || '?';
+            html = esc(`🎁✨ ${userDisplay} offre ${count} abonnements à la communauté !`);
+            break;
+          }
+          case 'giftpaidupgrade': {
+            type = 'highlighted';
+            html = esc(`💝 ${userDisplay} a prolongé un abonnement offert`);
+            break;
+          }
+          case 'announcement': {
+            type = 'announcement';
+            html = renderTwitchEmotes(tags['system-msg'] || message, tags.emotes);
+            break;
+          }
+          default:
+            return;
+        }
+
+        if (html) {
+          addMessage({ userDisplay, userLogin, color: tags.color || '#fff', html, type, roles });
+        }
+      });
+
+      client.connect().catch(e => {
+        console.error('[overlay] ❌ Erreur connexion:', e);
+        document.getElementById('stack').innerHTML =
+          '<div style="color:#ff5555;padding:20px;text-align:center;font-size:14px;">❌ Erreur de connexion Twitch</div>';
+      });
+
+    })();
   </script>
 
 </body>
