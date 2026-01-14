@@ -148,7 +148,7 @@
     }
 
     .reply-box {
-      background: rgba(255, 255, 255, 0.08);
+      background: #7aa2f72c;
       border: 1px solid rgba(255, 255, 255, 0.18);
       border-left: 4px solid rgba(255, 255, 255, 0.45);
       padding: 6px 8px;
@@ -412,7 +412,9 @@
           replyBox.className = 'reply-box';
 
           const replyUserColor =
-            userColorMap.get(reply.user.toLowerCase()) || '#9cdcfe';
+            reply.color
+            || userColorMap.get(reply.user.toLowerCase())
+            || '#c792ea';
 
           replyBox.innerHTML = `
     <div class="reply-user" style="color:${replyUserColor}">
@@ -464,6 +466,7 @@
       });
 
       client.on('message', (c, t, m, self) => {
+
         if (self) return;
         const login = t.username.toLowerCase();
         if (CONFIG.ignore.includes(login)) return;
@@ -479,7 +482,8 @@
         const replyData = t['reply-parent-display-name']
           ? {
             user: t['reply-parent-display-name'],
-            text: t['reply-parent-msg-body'] || ''
+            text: t['reply-parent-msg-body'] || '',
+            color: userColorMap.get(t['reply-parent-display-name'].toLowerCase())
           }
           : null;
 
