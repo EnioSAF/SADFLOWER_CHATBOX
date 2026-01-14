@@ -3,31 +3,24 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Twitch Chat — Terminal V1</title>
-
-  <link href="https://fonts.googleapis.com/css2?family=Cascadia+Code:wght@400;600&display=swap" rel="stylesheet">
+  <title>SadFlower® — Terminal V1</title>
 
   <style>
     :root {
-      /* Windows-like colors (closer to Win98/NT) */
       --win-blue: #000080;
       --win-border: #808080;
       --win-border-soft: #dfdfdf;
 
-      /* Background */
       --glass-bg: rgba(0, 0, 0, .15);
       --glass-blur: 18px;
 
-      /* Message glass */
       --msg-glass-1: rgba(255, 255, 255, .08);
       --msg-glass-2: rgba(255, 255, 255, .03);
 
-      /* Meta */
       --meta-h: 18px;
       --meta-font: 10.5px;
       --chev: 7px;
 
-      /* Roles */
       --broadcaster: #ff2a55;
       --mod: #7aa2f7;
       --vip: #ff8f40;
@@ -37,9 +30,7 @@
       --text: #f1f1f1;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     html,
     body {
@@ -47,16 +38,15 @@
       width: 100%;
       height: 100%;
       background: transparent;
-      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
       font-size: 12.5px;
       overflow: hidden;
     }
 
-    /* ================= WINDOW ================= */
-
+    /* WINDOW */
     .window {
       width: 420px;
-      height: 650px;
+      height: 675px;
       background: var(--glass-bg);
       backdrop-filter: blur(var(--glass-blur));
       border: 2px solid var(--win-border);
@@ -67,8 +57,7 @@
       flex-direction: column;
     }
 
-    /* ================= TITLE BAR ================= */
-
+    /* TITLE BAR */
     .titlebar {
       height: 52px;
       background: var(--win-blue);
@@ -101,9 +90,8 @@
       box-shadow:
         inset 1px 1px 0 #dfdfdf,
         inset -1px -1px 0 #606060;
-      color: #000;
-      font-weight: 600;
       background: #c0c0c0;
+      font-weight: 600;
       user-select: none;
     }
 
@@ -114,8 +102,7 @@
       border-color: #9e0b16;
     }
 
-    /* ================= CHAT ================= */
-
+    /* CHAT */
     .chat {
       flex: 1;
       padding: 14px;
@@ -124,37 +111,64 @@
       gap: 12px;
     }
 
-    /* ================= MESSAGE CARD ================= */
-
+    /* MESSAGE */
     .message {
       padding: 10px 12px;
       border-radius: 2px;
-      background: linear-gradient(135deg,
-          var(--msg-glass-1),
-          var(--msg-glass-2));
+      background: linear-gradient(135deg, var(--msg-glass-1), var(--msg-glass-2));
       backdrop-filter: blur(6px);
       border: 1px solid transparent;
-      /* couleur injectée dynamiquement */
       box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, .12),
-        0 2px 6px rgba(0, 0, 0, .35);
-      animation: enter .25s ease-out both;
+        inset 0 1px 0 rgba(255,255,255,.12),
+        0 2px 6px rgba(0,0,0,.35);
+      animation: msg-in 220ms steps(3, end);
     }
 
-    @keyframes enter {
-      from {
-        opacity: 0;
-        transform: translateY(6px)
-      }
-
-      to {
-        opacity: 1;
-        transform: none
-      }
+    .message.reply {
+      position: relative;
+      padding-left: 16px;
     }
 
-    /* ================= META ================= */
+    .message.reply::before {
+      content: "";
+      position: absolute;
+      left: 6px;
+      top: 6px;
+      bottom: 6px;
+      width: 2px;
+      background: rgba(255,255,255,.4);
+    }
 
+    .reply-label {
+      font-size: 10px;
+      opacity: .7;
+      margin-bottom: 2px;
+    }
+
+    @keyframes msg-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    @keyframes msg-out {
+      to { opacity: 0; transform: scaleY(.6); }
+    }
+
+    /* EVENT (subs / raids / bits – prêt, pas simulé) */
+    .message.event {
+      background: #c0c0c0;
+      color: #000;
+      border-color: #000;
+      box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #404040;
+      animation: event-in 300ms steps(4, end);
+    }
+
+    @keyframes event-in {
+      from { opacity: 0; transform: scale(.95); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* META */
     .meta {
       display: flex;
       align-items: center;
@@ -187,49 +201,22 @@
       border-left: var(--chev) solid;
     }
 
-    .seg.broadcaster {
-      background: var(--broadcaster);
-    }
-
-    .seg.broadcaster::after {
-      border-left-color: var(--broadcaster);
-    }
-
-    .seg.mod {
-      background: var(--mod);
-    }
-
-    .seg.mod::after {
-      border-left-color: var(--mod);
-    }
-
-    .seg.vip {
-      background: var(--vip);
-    }
-
-    .seg.vip::after {
-      border-left-color: var(--vip);
-    }
-
-    .seg.sub {
-      background: var(--sub);
-    }
-
-    .seg.sub::after {
-      border-left-color: var(--sub);
-    }
+    .seg.broadcaster { background: var(--broadcaster); }
+    .seg.broadcaster::after { border-left-color: var(--broadcaster); }
+    .seg.mod { background: var(--mod); }
+    .seg.mod::after { border-left-color: var(--mod); }
+    .seg.vip { background: var(--vip); }
+    .seg.vip::after { border-left-color: var(--vip); }
+    .seg.sub { background: var(--sub); }
+    .seg.sub::after { border-left-color: var(--sub); }
 
     .seg.time {
       margin-left: auto;
       background: var(--time);
     }
+    .seg.time::after { border-left-color: var(--time); }
 
-    .seg.time::after {
-      border-left-color: var(--time);
-    }
-
-    /* ================= CONTENT ================= */
-
+    /* CONTENT */
     .content {
       line-height: 1.55;
       color: var(--text);
@@ -238,14 +225,13 @@
 
     .user {
       font-weight: 600;
-      margin-right: 6px;
-      text-shadow: 0 1px 1px rgba(0, 0, 0, .55);
+      margin-right: 4px;
+      text-shadow: 0 1px 1px rgba(0,0,0,.55);
     }
 
     .emote {
       height: 1.4em;
       vertical-align: -0.25em;
-      display: inline-block;
     }
   </style>
 </head>
@@ -270,7 +256,7 @@
 
       const CONFIG = {
         channel: 'EnioSadFlower',
-        maxMessages: 12,
+        maxMessages: 8,
         lifeMs: 45000,
         ignore: ['streamelements', 'nightbot', 'streamlabs']
       };
@@ -292,8 +278,6 @@
           second: '2-digit'
         });
 
-      /* ===== utils ===== */
-
       function hexToRgba(hex, alpha) {
         if (!hex || !hex.startsWith('#')) return `rgba(255,255,255,${alpha})`;
         const r = parseInt(hex.slice(1, 3), 16);
@@ -301,8 +285,6 @@
         const b = parseInt(hex.slice(5, 7), 16);
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
       }
-
-      /* ================= EMOTES LOADING ================= */
 
       async function loadEmotes(channel) {
         const bttvGlobal = await fetch('https://api.betterttv.net/3/cached/emotes/global').then(r => r.json());
@@ -318,8 +300,6 @@
         const sevenUser = await fetch(`https://7tv.io/v3/users/twitch/${channel}`).then(r => r.json()).catch(() => null);
         sevenUser?.emote_set?.emotes?.forEach(e => emoteMap.set(e.name, e.data.host.url + '/2x.webp'));
       }
-
-      /* ================= MESSAGE PARSING ================= */
 
       function renderTwitchEmotes(text, emotes) {
         if (!emotes) return esc(text);
@@ -356,12 +336,18 @@
         });
       }
 
-      /* ================= BUILD MESSAGE ================= */
-
-      function buildMessage({ user, color, html, roles }) {
+      function buildMessage({ user, color, html, roles, replyTo }) {
         const msg = document.createElement('div');
         msg.className = 'message';
         msg.style.borderColor = hexToRgba(color, 0.3);
+
+        if (replyTo) {
+          msg.classList.add('reply');
+          const label = document.createElement('div');
+          label.className = 'reply-label';
+          label.textContent = `↪ réponse à ${replyTo}`;
+          msg.appendChild(label);
+        }
 
         const meta = document.createElement('div');
         meta.className = 'meta';
@@ -374,10 +360,13 @@
 
         const content = document.createElement('div');
         content.className = 'content';
-        content.innerHTML = `<span class="user" style="color:${color}">${esc(user)}</span>${html}`;
+        content.innerHTML = `<span class="user" style="color:${color}">${esc(user)}</span> : ${html}`;
 
         msg.append(meta, content);
+
+        setTimeout(() => msg.style.animation = 'msg-out 180ms forwards', CONFIG.lifeMs - 200);
         setTimeout(() => msg.remove(), CONFIG.lifeMs);
+
         return msg;
       }
 
@@ -389,8 +378,6 @@
           sub: !!(tags.badges?.subscriber || tags.subscriber)
         };
       }
-
-      /* ================= TWITCH ================= */
 
       loadEmotes(CONFIG.channel);
 
@@ -412,11 +399,16 @@
         html = renderThirdPartyEmotes(html);
         html = colorMentions(html);
 
+        const replyTo =
+          t['reply-parent-display-name'] ||
+          (/^@([A-Za-z0-9_]{3,25})/.exec(m)?.[1] ?? null);
+
         const el = buildMessage({
           user: display,
           color,
           html,
-          roles: parseRoles(t)
+          roles: parseRoles(t),
+          replyTo
         });
 
         chat.prepend(el);
@@ -428,5 +420,4 @@
     })();
   </script>
 </body>
-
 </html>
