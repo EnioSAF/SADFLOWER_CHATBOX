@@ -147,6 +147,27 @@
       margin-bottom: 2px;
     }
 
+    .reply-box {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-left: 4px solid rgba(255, 255, 255, 0.45);
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .reply-box .reply-user {
+      font-weight: 700;
+    }
+
+    .reply-box .reply-text {
+      opacity: 0.85;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     @keyframes msg-in {
       from {
         opacity: 0;
@@ -381,19 +402,29 @@
         });
       }
 
-      function buildMessage({ user, color, html, roles, replyTo }) {
+      function buildMessage({ user, color, html, roles, reply }) {
         const msg = document.createElement('div');
         msg.className = 'message';
         msg.style.borderColor = hexToRgba(color, 0.3);
 
-        if (replyTo) {
-          msg.classList.add('reply');
-          const label = document.createElement('div');
-          label.className = 'reply-label';
-          label.textContent = `↪ réponse à ${replyTo}`;
-          msg.appendChild(label);
-        }
+        if (reply) {
+          const replyBox = document.createElement('div');
+          replyBox.className = 'reply-box';
 
+          const replyUserColor =
+            userColorMap.get(reply.user.toLowerCase()) || '#9cdcfe';
+
+          replyBox.innerHTML = `
+    <div class="reply-user" style="color:${replyUserColor}">
+      ↪ Réponse à ${esc(reply.user)}
+    </div>
+    <div class="reply-text">
+      ${esc(reply.text)}
+    </div>
+  `;
+
+          msg.appendChild(replyBox);
+        }
         const meta = document.createElement('div');
         meta.className = 'meta';
 
@@ -405,6 +436,7 @@
 
         const content = document.createElement('div');
         content.className = 'content';
+
         content.innerHTML = `<span class="user" style="color:${color}">${esc(user)}</span>: ${html}`;
 
         msg.append(meta, content);
@@ -444,17 +476,21 @@
         html = renderThirdPartyEmotes(html);
         html = colorMentions(html);
 
-        const replyTo =
-          t['reply-parent-display-name'] ||
-          (/^@([A-Za-z0-9_]{3,25})/.exec(m)?.[1] ?? null);
+        const replyData = t['reply-parent-display-name']
+          ? {
+            user: t['reply-parent-display-name'],
+            text: t['reply-parent-msg-body'] || ''
+          }
+          : null;
 
         const el = buildMessage({
           user: display,
           color,
           html,
           roles: parseRoles(t),
-          replyTo
+          reply: replyData
         });
+
 
         chat.prepend(el);
 
