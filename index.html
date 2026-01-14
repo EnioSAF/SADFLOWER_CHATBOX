@@ -47,7 +47,6 @@
     .window {
       width: 420px;
       height: 675px;
-      background: var(--glass-bg);
       backdrop-filter: blur(var(--glass-blur));
       border: 2px solid var(--win-border);
       box-shadow:
@@ -360,7 +359,7 @@
 
         const content = document.createElement('div');
         content.className = 'content';
-        content.innerHTML = `<span class="user" style="color:${color}">${esc(user)}</span> : ${html}`;
+        content.innerHTML = `<span class="user" style="color:${color}">${esc(user)}</span>: ${html}`;
 
         msg.append(meta, content);
 
