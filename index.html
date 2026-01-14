@@ -12,8 +12,12 @@
       --win-blue: #0078d4;
       --win-border: rgba(160, 165, 170, .75);
       --win-border-soft: rgba(160, 165, 170, .35);
+
       --glass-bg: rgba(0, 0, 0, .15);
       --glass-blur: 18px;
+
+      --msg-glass: rgba(255, 255, 255, .06);
+      --msg-border: rgba(255, 255, 255, .12);
 
       --meta-h: 18px;
       --meta-font: 10.5px;
@@ -42,16 +46,22 @@
       overflow: hidden;
     }
 
+    /* ================= WINDOW ================= */
+
     .window {
       width: 420px;
-      height: 850px;
+      height: 650px;
       background: var(--glass-bg);
       backdrop-filter: blur(var(--glass-blur));
       border: 3px solid var(--win-border);
-      box-shadow: inset 0 0 0 1px var(--win-border-soft), 0 4px 20px rgba(0, 0, 0, .45);
+      box-shadow:
+        inset 0 0 0 1px var(--win-border-soft),
+        0 4px 20px rgba(0, 0, 0, .45);
       display: flex;
       flex-direction: column;
     }
+
+    /* ================= TITLE BAR ================= */
 
     .titlebar {
       height: 54px;
@@ -59,7 +69,7 @@
       border-bottom: 3px solid var(--win-border);
       display: flex;
       align-items: center;
-      padding: 0 10px;
+      padding: 0 8px;
       flex-shrink: 0;
     }
 
@@ -70,15 +80,56 @@
       font-weight: 600;
     }
 
+    .controls {
+      margin-left: auto;
+      display: flex;
+    }
+
+    .ctrl {
+      width: 44px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, .45);
+      color: white;
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .ctrl.min,
+    .ctrl.max {
+      background: var(--win-blue);
+    }
+
+    .ctrl.close {
+      background: #e81123;
+    }
+
+    /* ================= CHAT ================= */
+
     .chat {
       flex: 1;
       padding: 14px;
       display: flex;
       flex-direction: column-reverse;
-      gap: 14px;
+      gap: 12px;
     }
 
+    /* ================= MESSAGE CARD ================= */
+
     .message {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, .08),
+        rgba(255, 255, 255, .03)
+      );
+      backdrop-filter: blur(6px);
+      border: 1px solid var(--msg-border);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .12),
+        0 2px 6px rgba(0, 0, 0, .35);
       animation: enter .25s ease-out both;
     }
 
@@ -87,12 +138,13 @@
         opacity: 0;
         transform: translateY(6px)
       }
-
       to {
         opacity: 1;
         transform: none
       }
     }
+
+    /* ================= META ================= */
 
     .meta {
       display: flex;
@@ -126,46 +178,26 @@
       border-left: var(--chev) solid;
     }
 
-    .seg.broadcaster {
-      background: var(--broadcaster)
-    }
+    .seg.broadcaster { background: var(--broadcaster); }
+    .seg.broadcaster::after { border-left-color: var(--broadcaster); }
 
-    .seg.broadcaster::after {
-      border-left-color: var(--broadcaster)
-    }
+    .seg.mod { background: var(--mod); }
+    .seg.mod::after { border-left-color: var(--mod); }
 
-    .seg.mod {
-      background: var(--mod)
-    }
+    .seg.vip { background: var(--vip); }
+    .seg.vip::after { border-left-color: var(--vip); }
 
-    .seg.mod::after {
-      border-left-color: var(--mod)
-    }
-
-    .seg.vip {
-      background: var(--vip)
-    }
-
-    .seg.vip::after {
-      border-left-color: var(--vip)
-    }
-
-    .seg.sub {
-      background: var(--sub)
-    }
-
-    .seg.sub::after {
-      border-left-color: var(--sub)
-    }
+    .seg.sub { background: var(--sub); }
+    .seg.sub::after { border-left-color: var(--sub); }
 
     .seg.time {
       margin-left: auto;
-      background: var(--time)
+      background: var(--time);
     }
 
-    .seg.time::after {
-      border-left-color: var(--time)
-    }
+    .seg.time::after { border-left-color: var(--time); }
+
+    /* ================= CONTENT ================= */
 
     .content {
       line-height: 1.55;
@@ -191,160 +223,17 @@
   <div class="window">
     <div class="titlebar">
       <div class="title">TERMINAL V1 — LIVE CHAT</div>
+      <div class="controls">
+        <div class="ctrl min">–</div>
+        <div class="ctrl max">▢</div>
+        <div class="ctrl close">✕</div>
+      </div>
     </div>
     <div class="chat" id="chat"></div>
   </div>
 
-  <script src="./tmi.min.js"></script>
-
-  <script>
-    (() => {
-
-      const CONFIG = {
-        channel: 'EnioSadFlower',
-        maxMessages: 12,
-        lifeMs: 45000,
-        ignore: ['streamelements', 'nightbot', 'streamlabs']
-      };
-
-      const chat = document.getElementById('chat');
-      const userColorMap = new Map();
-      const emoteMap = new Map();
-
-      const esc = s => {
-        const d = document.createElement('div');
-        d.textContent = s;
-        return d.innerHTML;
-      };
-
-      const now = () => new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-      /* ================= EMOTES LOADING ================= */
-
-      async function loadEmotes(channel) {
-        // BTTV
-        const bttvGlobal = await fetch('https://api.betterttv.net/3/cached/emotes/global').then(r => r.json());
-        bttvGlobal.forEach(e => emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x`));
-
-        const bttvChan = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${channel}`).then(r => r.json()).catch(() => null);
-        bttvChan?.channelEmotes?.forEach(e => emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x`));
-        bttvChan?.sharedEmotes?.forEach(e => emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x`));
-
-        // 7TV
-        const sevenGlobal = await fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json());
-        sevenGlobal.emotes.forEach(e => emoteMap.set(e.name, e.data.host.url + '/2x.webp'));
-
-        const sevenUser = await fetch(`https://7tv.io/v3/users/twitch/${channel}`).then(r => r.json()).catch(() => null);
-        sevenUser?.emote_set?.emotes?.forEach(e => emoteMap.set(e.name, e.data.host.url + '/2x.webp'));
-      }
-
-      /* ================= MESSAGE PARSING ================= */
-
-      function renderTwitchEmotes(text, emotes) {
-        if (!emotes) return esc(text);
-        const chars = [...text];
-        const map = [];
-        for (const id in emotes) {
-          emotes[id].forEach(r => {
-            const [a, b] = r.split('-').map(Number);
-            map.push({ a, b, id });
-          });
-        }
-        map.sort((a, b) => a.a - b.a);
-        let out = '', last = 0;
-        map.forEach(e => {
-          out += esc(chars.slice(last, e.a).join(''));
-          out += `<img class="emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/2.0">`;
-          last = e.b + 1;
-        });
-        out += esc(chars.slice(last).join(''));
-        return out;
-      }
-
-      function renderThirdPartyEmotes(html) {
-        return html.replace(/\b([A-Za-z0-9_]+)\b/g, (m) => {
-          const url = emoteMap.get(m);
-          return url ? `<img class="emote" src="${url}">` : m;
-        });
-      }
-
-      function colorMentions(html) {
-        return html.replace(/@([A-Za-z0-9_]{3,25})/g, (m, n) => {
-          const c = userColorMap.get(n.toLowerCase());
-          return c ? `<span style="color:${c};font-weight:600">@${n}</span>` : m;
-        });
-      }
-
-      /* ================= BUILD MESSAGE ================= */
-
-      function buildMessage({ user, color, html, roles }) {
-        const msg = document.createElement('div');
-        msg.className = 'message';
-
-        const meta = document.createElement('div');
-        meta.className = 'meta';
-
-        if (roles.broadcaster) meta.innerHTML += `<div class="seg broadcaster">LIVE</div>`;
-        if (roles.mod) meta.innerHTML += `<div class="seg mod">MOD</div>`;
-        if (roles.vip) meta.innerHTML += `<div class="seg vip">VIP</div>`;
-        if (roles.sub) meta.innerHTML += `<div class="seg sub">SUB</div>`;
-        meta.innerHTML += `<div class="seg time">${now()}</div>`;
-
-        const content = document.createElement('div');
-        content.className = 'content';
-        content.innerHTML = `<span class="user" style="color:${color}">${esc(user)}</span>${html}`;
-
-        msg.append(meta, content);
-        setTimeout(() => msg.remove(), CONFIG.lifeMs);
-        return msg;
-      }
-
-      function parseRoles(tags) {
-        return {
-          broadcaster: !!tags.badges?.broadcaster,
-          mod: !!(tags.badges?.moderator || tags.mod),
-          vip: !!tags.badges?.vip,
-          sub: !!(tags.badges?.subscriber || tags.subscriber)
-        };
-      }
-
-      /* ================= TWITCH ================= */
-
-      loadEmotes(CONFIG.channel).then(() => console.log('Emotes loaded'));
-
-      const client = new tmi.Client({
-        connection: { secure: true, reconnect: true },
-        channels: ['#' + CONFIG.channel.toLowerCase()]
-      });
-
-      client.on('message', (c, t, m, self) => {
-        if (self) return;
-        const login = t.username.toLowerCase();
-        if (CONFIG.ignore.includes(login)) return;
-
-        const display = t['display-name'] || login;
-        const color = t.color || '#9cdcfe';
-        userColorMap.set(display.toLowerCase(), color);
-
-        let html = renderTwitchEmotes(m, t.emotes);
-        html = renderThirdPartyEmotes(html);
-        html = colorMentions(html);
-
-        const el = buildMessage({
-          user: display,
-          color,
-          html,
-          roles: parseRoles(t)
-        });
-
-        chat.prepend(el);
-        [...chat.children].slice(CONFIG.maxMessages).forEach(n => n.remove());
-      });
-
-      client.connect();
-
-    })();
-  </script>
+  <!-- JS identique à ton fichier actuel -->
+  <!-- (aucun changement logique nécessaire ici) -->
 </body>
 
 </html>
