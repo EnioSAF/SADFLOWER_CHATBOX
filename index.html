@@ -10,27 +10,16 @@
 
   <style>
     :root {
-      --win-blue: #000080;
-      --win-border: #808080;
-      --win-border-soft: #dfdfdf;
-
-      --glass-bg: rgba(0, 0, 0, .15);
-      --glass-blur: 18px;
-
-      --msg-glass-1: rgba(255, 255, 255, 0.068);
-      --msg-glass-2: rgba(255, 255, 255, 0.13);
-
-      --meta-h: 18px;
-      --meta-font: 10.5px;
-      --chev: 7px;
-
       --broadcaster: #ff2a55;
       --mod: #7aa2f7;
       --vip: #ff8f40;
       --sub: #c792ea;
       --time: #2bbac5;
-
       --text: #cfcfcf;
+
+      --meta-h: 18px;
+      --meta-font: 10.5px;
+      --chev: 7px;
     }
 
     * {
@@ -48,62 +37,71 @@
       overflow: hidden;
     }
 
-    /* WINDOW */
+    /* WINDOW - Style Windows 98 */
     .window {
       width: 420px;
       height: 725px;
-      backdrop-filter: blur(var(--glass-blur));
-      border: 2px solid var(--win-border);
-      box-shadow:
-        inset 1px 1px 0 var(--win-border-soft),
-        inset -1px -1px 0 #404040;
+      border: 2px solid #dfdfdf;
+      border-bottom-color: #404040;
+      border-right-color: #404040;
+      border-left-color: #dfdfdf;
+      border-top-color: #dfdfdf;
+      box-shadow: inset 2px 2px #808080, inset -2px -2px #f0f0f0;
+      padding: 2px;
       display: flex;
       flex-direction: column;
     }
 
-    /* TITLE BAR */
+    /* TITLE BAR - Style Windows 98 */
     .titlebar {
-      height: 52px;
-      background: var(--win-blue);
-      border-bottom: 2px solid var(--win-border);
+      background: linear-gradient(90deg, #000080, #1084d0);
+      padding: 3px 4px;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      padding: 0 8px;
+      color: white;
+      font-weight: bold;
+      height: 26px;
       flex-shrink: 0;
     }
 
     .title {
       color: #fff;
-      font-size: 13px;
-      letter-spacing: .06em;
-      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: .03em;
+      font-weight: bold;
+      flex-grow: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .controls {
-      margin-left: auto;
       display: flex;
-      gap: 4px;
+      gap: 2px;
     }
 
     .ctrl {
-      width: 42px;
-      height: 28px;
-      display: grid;
-      place-items: center;
+      width: 18px;
+      height: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       border: 1px solid #404040;
-      box-shadow:
-        inset 1px 1px 0 #dfdfdf,
-        inset -1px -1px 0 #606060;
-      background: #c0c0c0;
-      font-weight: 600;
+      border-right-color: #f0f0f0;
+      border-bottom-color: #f0f0f0;
+      border-left-color: #404040;
+      border-top-color: #404040;
+      background-color: #c0c0c0;
+      box-shadow: inset -1px -1px #808080, inset 1px 1px #f0f0f0;
+      font-size: 10px;
+      line-height: 1;
+      padding: 0;
       user-select: none;
     }
 
     .ctrl.close {
-      background: #e81123;
-      color: #fff;
-      box-shadow: none;
-      border-color: #9e0b16;
+      background: red;
     }
 
     /* CHAT */
@@ -114,13 +112,18 @@
       flex-direction: column-reverse;
       gap: 12px;
       overflow: hidden;
+      border: 2px solid #808080;
+      border-bottom-color: #dfdfdf;
+      border-right-color: #dfdfdf;
+      border-left-color: #404040;
+      border-top-color: #404040;
     }
 
     /* MESSAGE */
     .message {
       padding: 10px 12px;
       border-radius: 2px;
-      background: linear-gradient(135deg, var(--msg-glass-1), var(--msg-glass-2));
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.068), rgba(255, 255, 255, 0.13));
       backdrop-filter: blur(6px);
       border: 1px solid transparent;
       box-shadow:
@@ -191,7 +194,7 @@
       }
     }
 
-    /* EVENT (subs / raids / bits – prêt, pas simulé) */
+    /* EVENT */
     .message.event {
       background: #c0c0c0;
       color: #000;
@@ -295,7 +298,6 @@
       font-weight: 500;
     }
 
-
     .user {
       font-weight: 600;
       margin-right: 6px;
@@ -314,15 +316,15 @@
     <div class="titlebar">
       <div class="title">SADFLOWER — LIVE CHAT</div>
       <div class="controls">
-        <div class="ctrl min">–</div>
-        <div class="ctrl max">▢</div>
-        <div class="ctrl close">✕</div>
+        <div class="ctrl min">_</div>
+        <div class="ctrl max">□</div>
+        <div class="ctrl close">×</div>
       </div>
     </div>
     <div class="chat" id="chat"></div>
   </div>
 
-  <script src="./tmi.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tmi.js/1.8.5/tmi.min.js"></script>
 
   <script>
     (() => {
@@ -501,7 +503,6 @@
           roles: parseRoles(t),
           reply: replyData
         });
-
 
         chat.prepend(el);
 
