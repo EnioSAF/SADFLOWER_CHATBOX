@@ -331,7 +331,7 @@
         channel: 'EnioSadFlower',
         maxMessages: 8,
         lifeMs: 45000,
-        ignore: ['streamelements', 'nightbot', 'streamlabs', 'franksadflower']
+        ignore: ['streamelements', 'nightbot', 'streamlabs', 'franksadflower', 'pokemoncommunitygame']
       };
       const chat = document.getElementById('chat');
       const userColorMap = new Map();
@@ -477,6 +477,7 @@
         const login = t.username.toLowerCase();
         if (CONFIG.ignore.includes(login)) return;
 
+        if (m.startsWith('!')) return;
         const display = t['display-name'] || login;
         const color = t.color || '#9cdcfe';
         userColorMap.set(display.toLowerCase(), color);
