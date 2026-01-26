@@ -20,6 +20,8 @@
       --meta-h: 18px;
       --meta-font: 10.5px;
       --chev: 7px;
+      --emote-max-h: 3.6em;
+      --emote-max-w: 12em;
     }
 
     * {
@@ -308,7 +310,10 @@
     }
 
     .emote {
-      height: 1.4em;
+      height: auto;
+      width: auto;
+      max-height: var(--emote-max-h);
+      max-width: var(--emote-max-w);
       vertical-align: -0.25em;
     }
   </style>
@@ -366,10 +371,27 @@
       }
 
       function pickFfzUrl(emote) {
-        const urls = emote?.urls || {};
+        const animated = emote?.animated;
+        const animatedUrls = animated && typeof animated === 'object'
+          ? (animated.urls || animated)
+          : null;
+        const urls = animatedUrls || emote?.urls || {};
         const url = urls['4'] || urls['2'] || urls['1'] || null;
         if (!url) return null;
         return url.startsWith('//') ? `https:${url}` : url;
+      }
+
+      function pick7tvUrl(emote, scale) {
+        const host = emote?.data?.host;
+        const files = host?.files || [];
+        const pick = name => files.some(f => f.name === name) ? name : null;
+        const name =
+          pick(`${scale}x.gif`)
+          || pick(`${scale}x.webp`)
+          || pick('1x.gif')
+          || pick('1x.webp')
+          || files[0]?.name;
+        return host?.url && name ? `${host.url}/${name}` : null;
       }
 
       async function resolveTwitchId(channel) {
@@ -388,24 +410,39 @@
         const bttvGlobal = await fetch('https://api.betterttv.net/3/cached/emotes/global')
           .then(r => r.json())
           .catch(() => []);
-        bttvGlobal.forEach(e => emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x`));
+        bttvGlobal.forEach(e => {
+          const ext = e.imageType === 'gif' ? 'gif' : 'png';
+          emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x.${ext}`);
+        });
 
         const twitchId = await resolveTwitchId(channel);
         const bttvChan = twitchId
           ? await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchId}`).then(r => r.json()).catch(() => null)
           : null;
-        bttvChan?.channelEmotes?.forEach(e => emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x`));
-        bttvChan?.sharedEmotes?.forEach(e => emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x`));
+        bttvChan?.channelEmotes?.forEach(e => {
+          const ext = e.imageType === 'gif' ? 'gif' : 'png';
+          emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x.${ext}`);
+        });
+        bttvChan?.sharedEmotes?.forEach(e => {
+          const ext = e.imageType === 'gif' ? 'gif' : 'png';
+          emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x.${ext}`);
+        });
 
         const sevenGlobal = await fetch('https://7tv.io/v3/emote-sets/global')
           .then(r => r.json())
           .catch(() => null);
-        sevenGlobal?.emotes?.forEach(e => emoteMap.set(e.name, e.data.host.url + '/2x.webp'));
+        sevenGlobal?.emotes?.forEach(e => {
+          const url = pick7tvUrl(e, 2);
+          if (url) emoteMap.set(e.name, url);
+        });
 
         const sevenUser = twitchId
           ? await fetch(`https://7tv.io/v3/users/twitch/${twitchId}`).then(r => r.json()).catch(() => null)
           : null;
-        sevenUser?.emote_set?.emotes?.forEach(e => emoteMap.set(e.name, e.data.host.url + '/2x.webp'));
+        sevenUser?.emote_set?.emotes?.forEach(e => {
+          const url = pick7tvUrl(e, 2);
+          if (url) emoteMap.set(e.name, url);
+        });
 
         const ffzGlobal = await fetch('https://api.frankerfacez.com/v1/set/global')
           .then(r => r.json())
@@ -440,8 +477,10 @@
         map.sort((a, b) => a.a - b.a);
         let out = '', last = 0;
         map.forEach(e => {
+          const staticUrl = `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/2.0`;
+          const animatedUrl = `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/animated/dark/2.0`;
           out += esc(chars.slice(last, e.a).join(''));
-          out += `<img class="emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/2.0">`;
+          out += `<img class="emote" src="${animatedUrl}" onerror="this.onerror=null;this.src='${staticUrl}'">`;
           last = e.b + 1;
         });
         out += esc(chars.slice(last).join(''));
