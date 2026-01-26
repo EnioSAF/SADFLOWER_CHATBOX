@@ -365,18 +365,39 @@
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
       }
 
+      async function resolveTwitchId(channel) {
+        try {
+          const res = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${encodeURIComponent(channel)}`);
+          if (!res.ok) return null;
+          const data = await res.json();
+          const user = Array.isArray(data) ? data[0] : data;
+          return user?.id ? String(user.id) : null;
+        } catch {
+          return null;
+        }
+      }
+
       async function loadEmotes(channel) {
-        const bttvGlobal = await fetch('https://api.betterttv.net/3/cached/emotes/global').then(r => r.json());
+        const bttvGlobal = await fetch('https://api.betterttv.net/3/cached/emotes/global')
+          .then(r => r.json())
+          .catch(() => []);
         bttvGlobal.forEach(e => emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x`));
 
-        const bttvChan = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${channel}`).then(r => r.json()).catch(() => null);
+        const twitchId = await resolveTwitchId(channel);
+        const bttvChan = twitchId
+          ? await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchId}`).then(r => r.json()).catch(() => null)
+          : null;
         bttvChan?.channelEmotes?.forEach(e => emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x`));
         bttvChan?.sharedEmotes?.forEach(e => emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x`));
 
-        const sevenGlobal = await fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json());
-        sevenGlobal.emotes.forEach(e => emoteMap.set(e.name, e.data.host.url + '/2x.webp'));
+        const sevenGlobal = await fetch('https://7tv.io/v3/emote-sets/global')
+          .then(r => r.json())
+          .catch(() => null);
+        sevenGlobal?.emotes?.forEach(e => emoteMap.set(e.name, e.data.host.url + '/2x.webp'));
 
-        const sevenUser = await fetch(`https://7tv.io/v3/users/twitch/${channel}`).then(r => r.json()).catch(() => null);
+        const sevenUser = twitchId
+          ? await fetch(`https://7tv.io/v3/users/twitch/${twitchId}`).then(r => r.json()).catch(() => null)
+          : null;
         sevenUser?.emote_set?.emotes?.forEach(e => emoteMap.set(e.name, e.data.host.url + '/2x.webp'));
       }
 
