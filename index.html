@@ -365,6 +365,13 @@
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
       }
 
+      function pickFfzUrl(emote) {
+        const urls = emote?.urls || {};
+        const url = urls['4'] || urls['2'] || urls['1'] || null;
+        if (!url) return null;
+        return url.startsWith('//') ? `https:${url}` : url;
+      }
+
       async function resolveTwitchId(channel) {
         try {
           const res = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${encodeURIComponent(channel)}`);
@@ -399,6 +406,25 @@
           ? await fetch(`https://7tv.io/v3/users/twitch/${twitchId}`).then(r => r.json()).catch(() => null)
           : null;
         sevenUser?.emote_set?.emotes?.forEach(e => emoteMap.set(e.name, e.data.host.url + '/2x.webp'));
+
+        const ffzGlobal = await fetch('https://api.frankerfacez.com/v1/set/global')
+          .then(r => r.json())
+          .catch(() => null);
+        Object.values(ffzGlobal?.sets || {}).forEach(set => {
+          set.emoticons?.forEach(e => {
+            const url = pickFfzUrl(e);
+            if (url) emoteMap.set(e.name, url);
+          });
+        });
+
+        const ffzRoom = await fetch(`https://api.frankerfacez.com/v1/room/${encodeURIComponent(channel.toLowerCase())}`)
+          .then(r => r.json())
+          .catch(() => null);
+        const ffzSet = ffzRoom?.sets?.[ffzRoom?.room?.set];
+        ffzSet?.emoticons?.forEach(e => {
+          const url = pickFfzUrl(e);
+          if (url) emoteMap.set(e.name, url);
+        });
       }
 
       function renderTwitchEmotes(text, emotes) {
