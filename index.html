@@ -314,7 +314,24 @@
       width: auto;
       max-height: var(--emote-max-h);
       max-width: var(--emote-max-w);
+      display: block;
+    }
+
+    .emote-wrap {
+      position: relative;
+      display: inline-block;
       vertical-align: -0.25em;
+      line-height: 0;
+    }
+
+    .emote.overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -406,13 +423,18 @@
         }
       }
 
+      function isZeroWidth7tv(emote) {
+        const flags = emote?.data?.flags ?? emote?.flags ?? 0;
+        return (flags & 256) === 256;
+      }
+
       async function loadEmotes(channel) {
         const bttvGlobal = await fetch('https://api.betterttv.net/3/cached/emotes/global')
           .then(r => r.json())
           .catch(() => []);
         bttvGlobal.forEach(e => {
           const ext = e.imageType === 'gif' ? 'gif' : 'png';
-          emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x.${ext}`);
+          emoteMap.set(e.code, { url: `https://cdn.betterttv.net/emote/${e.id}/2x.${ext}`, zeroWidth: false });
         });
 
         const twitchId = await resolveTwitchId(channel);
@@ -421,11 +443,11 @@
           : null;
         bttvChan?.channelEmotes?.forEach(e => {
           const ext = e.imageType === 'gif' ? 'gif' : 'png';
-          emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x.${ext}`);
+          emoteMap.set(e.code, { url: `https://cdn.betterttv.net/emote/${e.id}/2x.${ext}`, zeroWidth: false });
         });
         bttvChan?.sharedEmotes?.forEach(e => {
           const ext = e.imageType === 'gif' ? 'gif' : 'png';
-          emoteMap.set(e.code, `https://cdn.betterttv.net/emote/${e.id}/2x.${ext}`);
+          emoteMap.set(e.code, { url: `https://cdn.betterttv.net/emote/${e.id}/2x.${ext}`, zeroWidth: false });
         });
 
         const sevenGlobal = await fetch('https://7tv.io/v3/emote-sets/global')
@@ -433,7 +455,7 @@
           .catch(() => null);
         sevenGlobal?.emotes?.forEach(e => {
           const url = pick7tvUrl(e, 2);
-          if (url) emoteMap.set(e.name, url);
+          if (url) emoteMap.set(e.name, { url, zeroWidth: isZeroWidth7tv(e) });
         });
 
         const sevenUser = twitchId
@@ -441,7 +463,7 @@
           : null;
         sevenUser?.emote_set?.emotes?.forEach(e => {
           const url = pick7tvUrl(e, 2);
-          if (url) emoteMap.set(e.name, url);
+          if (url) emoteMap.set(e.name, { url, zeroWidth: isZeroWidth7tv(e) });
         });
 
         const ffzGlobal = await fetch('https://api.frankerfacez.com/v1/set/global')
@@ -450,7 +472,7 @@
         Object.values(ffzGlobal?.sets || {}).forEach(set => {
           set.emoticons?.forEach(e => {
             const url = pickFfzUrl(e);
-            if (url) emoteMap.set(e.name, url);
+            if (url) emoteMap.set(e.name, { url, zeroWidth: false });
           });
         });
 
@@ -460,12 +482,12 @@
         const ffzSet = ffzRoom?.sets?.[ffzRoom?.room?.set];
         ffzSet?.emoticons?.forEach(e => {
           const url = pickFfzUrl(e);
-          if (url) emoteMap.set(e.name, url);
+          if (url) emoteMap.set(e.name, { url, zeroWidth: false });
         });
       }
 
-      function renderTwitchEmotes(text, emotes) {
-        if (!emotes) return esc(text);
+      function tokenizeTwitchEmotes(text, emotes) {
+        if (!emotes) return [{ type: 'text', value: text }];
         const chars = [...text];
         const map = [];
         for (const id in emotes) {
@@ -475,23 +497,101 @@
           });
         }
         map.sort((a, b) => a.a - b.a);
-        let out = '', last = 0;
+        const tokens = [];
+        let last = 0;
         map.forEach(e => {
-          const staticUrl = `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/2.0`;
-          const animatedUrl = `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/animated/dark/2.0`;
-          out += esc(chars.slice(last, e.a).join(''));
-          out += `<img class="emote" src="${animatedUrl}" onerror="this.onerror=null;this.src='${staticUrl}'">`;
+          if (e.a > last) {
+            tokens.push({ type: 'text', value: chars.slice(last, e.a).join('') });
+          }
+          tokens.push({
+            type: 'emote',
+            provider: 'twitch',
+            staticUrl: `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/default/dark/2.0`,
+            animatedUrl: `https://static-cdn.jtvnw.net/emoticons/v2/${e.id}/animated/dark/2.0`,
+            zeroWidth: false
+          });
           last = e.b + 1;
         });
-        out += esc(chars.slice(last).join(''));
+        if (last < chars.length) {
+          tokens.push({ type: 'text', value: chars.slice(last).join('') });
+        }
+        return tokens;
+      }
+
+      function tokenizeThirdPartyEmotes(tokens) {
+        const out = [];
+        const wordRegex = /[A-Za-z0-9_]+/g;
+
+        tokens.forEach(token => {
+          if (token.type !== 'text') {
+            out.push(token);
+            return;
+          }
+          const text = token.value;
+          let lastIndex = 0;
+          let match;
+          wordRegex.lastIndex = 0;
+          while ((match = wordRegex.exec(text)) !== null) {
+            const start = match.index;
+            const word = match[0];
+            if (start > lastIndex) {
+              out.push({ type: 'text', value: text.slice(lastIndex, start) });
+            }
+            const meta = emoteMap.get(word);
+            if (meta) {
+              out.push({ type: 'emote', provider: 'third', url: meta.url, zeroWidth: meta.zeroWidth });
+            } else {
+              out.push({ type: 'text', value: word });
+            }
+            lastIndex = start + word.length;
+          }
+          if (lastIndex < text.length) {
+            out.push({ type: 'text', value: text.slice(lastIndex) });
+          }
+        });
+
         return out;
       }
 
-      function renderThirdPartyEmotes(html) {
-        return html.replace(/\b([A-Za-z0-9_]+)\b/g, m => {
-          const url = emoteMap.get(m);
-          return url ? `<img class="emote" src="${url}">` : m;
+      function renderEmoteToken(token, isOverlay) {
+        const cls = `emote${isOverlay ? ' overlay' : ''}`;
+        if (token.provider === 'twitch') {
+          return `<img class="${cls}" src="${token.animatedUrl}" onerror="this.onerror=null;this.src='${token.staticUrl}'">`;
+        }
+        return `<img class="${cls}" src="${token.url}">`;
+      }
+
+      function renderTokens(tokens) {
+        const items = [];
+
+        tokens.forEach(token => {
+          if (token.type !== 'emote') {
+            items.push({ type: 'text', value: token.value });
+            return;
+          }
+
+          if (token.zeroWidth) {
+            const last = items[items.length - 1];
+            const prev = items[items.length - 2];
+            if (last?.type === 'emote-stack') {
+              last.overlays.push(token);
+              return;
+            }
+            if (last?.type === 'text' && /^\s+$/.test(last.value) && prev?.type === 'emote-stack') {
+              items.pop();
+              prev.overlays.push(token);
+              return;
+            }
+          }
+
+          items.push({ type: 'emote-stack', base: token, overlays: [] });
         });
+
+        return items.map(item => {
+          if (item.type === 'text') return esc(item.value);
+          const overlays = item.overlays.map(o => renderEmoteToken(o, true)).join('');
+          return `<span class="emote-wrap">${renderEmoteToken(item.base, false)}${overlays}</span>`;
+        }).join('');
       }
 
       function colorMentions(html) {
@@ -576,8 +676,9 @@
         const color = t.color || '#9cdcfe';
         userColorMap.set(display.toLowerCase(), color);
 
-        let html = renderTwitchEmotes(m, t.emotes);
-        html = renderThirdPartyEmotes(html);
+        let tokens = tokenizeTwitchEmotes(m, t.emotes);
+        tokens = tokenizeThirdPartyEmotes(tokens);
+        let html = renderTokens(tokens);
         html = colorMentions(html);
 
         const replyData = t['reply-parent-display-name']
