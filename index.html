@@ -358,7 +358,9 @@
         channel: 'EnioSadFlower',
         maxMessages: 8,
         lifeMs: 45000,
+
         ignore: ['streamelements', 'nightbot', 'streamlabs', 'franksadflower', 'pokemoncommunitygame'],
+        allowedBots: [],
         ignoreMessages: [
           { user: 'eniosadflower', startsWith: 'Bien ouej' }
         ]
@@ -683,9 +685,11 @@
         if (self) return;
         const login = t.username.toLowerCase();
         const isIgnored = CONFIG.ignore.includes(login);
+        const isAllowed = CONFIG.allowedBots.includes(login);
         if (CONFIG.ignoreMessages.some(r => r.user === login && m.startsWith(r.startsWith))) return;
         if (m.startsWith('!')) return;
-        if (isIgnored && !(hasTwitchEmotes(t.emotes) || hasThirdPartyEmotes(m))) return;
+        if (isIgnored && login !== 'franksadflower' && !isAllowed) return;
+        if (login === 'franksadflower' && !(hasTwitchEmotes(t.emotes) || hasThirdPartyEmotes(m))) return;
         const display = t['display-name'] || login;
         const color = t.color || '#9cdcfe';
         userColorMap.set(display.toLowerCase(), color);
@@ -725,5 +729,8 @@
 </body>
 
 </html>
+
+
+
 
 
