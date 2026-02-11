@@ -595,6 +595,19 @@
         }).join('');
       }
 
+      function hasTwitchEmotes(emotes) {
+        return !!(emotes && Object.keys(emotes).length);
+      }
+
+      function hasThirdPartyEmotes(text) {
+        const wordRegex = /[A-Za-z0-9_]+/g;
+        let match;
+        while ((match = wordRegex.exec(text)) !== null) {
+          if (emoteMap.has(match[0])) return true;
+        }
+        return false;
+      }
+
       function colorMentions(html) {
         return html.replace(/@([A-Za-z0-9_]{3,25})/g, (m, n) => {
           const c = userColorMap.get(n.toLowerCase());
@@ -669,10 +682,10 @@
 
         if (self) return;
         const login = t.username.toLowerCase();
-        if (CONFIG.ignore.includes(login)) return;
+        const isIgnored = CONFIG.ignore.includes(login);
         if (CONFIG.ignoreMessages.some(r => r.user === login && m.startsWith(r.startsWith))) return;
-
         if (m.startsWith('!')) return;
+        if (isIgnored && !(hasTwitchEmotes(t.emotes) || hasThirdPartyEmotes(m))) return;
         const display = t['display-name'] || login;
         const color = t.color || '#9cdcfe';
         userColorMap.set(display.toLowerCase(), color);
@@ -712,3 +725,5 @@
 </body>
 
 </html>
+
+
